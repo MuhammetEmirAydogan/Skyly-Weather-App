@@ -1,5 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter_typeahead/flutter_typeahead.dart';
+import 'package:skyly/core/constants/turkey_cities.dart';
 import 'package:skyly/api/weather_service.dart';
 import 'package:skyly/presentation/widgets/daily_forecast_tile.dart';
 import 'package:skyly/presentation/widgets/hourly_forecast_card.dart';
@@ -17,24 +19,22 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final WeatherService _weatherService = WeatherService();
-  final TextEditingController _searchController = TextEditingController(); // YENİ: Arama çubuğu için controller
+  final TextEditingController _searchController = TextEditingController();
   Map<String, dynamic>? _weatherData;
   bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _fetchWeather(); // Başlangıçta varsayılan şehir için veri çek
+    _fetchWeather();
   }
 
-  // YENİ: Controller'ı bellekten silmek için dispose metodu
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
 
-  // GÜNCELLENDİ: Fonksiyon artık bir şehir adı parametresi alıyor
   Future<void> _fetchWeather([String cityName = 'Istanbul']) async {
     setState(() {
       _isLoading = true;
@@ -47,10 +47,12 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     } catch (e) {
       print('Hata Yakalandı: $e');
-      // Kullanıcıya hata mesajı göstermek için bir Snackbar ekleyebiliriz
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Şehir bulunamadı veya bir hata oluştu.')),
+          SnackBar(
+            content: Text('"${cityName}" şehri bulunamadı.'),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       }
     } finally {
@@ -61,7 +63,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Map<String, dynamic> _getWeatherUIElements(String? condition) {
-    // ... (bu fonksiyon aynı kalıyor)
     if (condition == null) {
       return {
         'icon': Icons.cloud_off,
@@ -100,6 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case 'mist':
       case 'fog':
       case 'haze':
+      case 'smoke':
         return {
           'icon': Icons.foggy,
           'gradient': [const Color(0xffbdc3c7), const Color(0xff2c3e50)],
@@ -119,24 +121,22 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: _isLoading
-          ? Center(
-          child: Container( // Yükleme animasyonunun da arka planı olsun
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppColors.cloudySky_1, AppColors.cloudySky_2],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-            child: const Center(child: CircularProgressIndicator(color: Colors.white)),
-          ))
+          ? Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [AppColors.cloudySky_1, AppColors.cloudySky_2],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: const Center(child: CircularProgressIndicator(color: Colors.white)),
+      )
           : _buildWeatherUI(),
     );
   }
 
   Widget _buildWeatherUI() {
     if (_weatherData == null) {
-      // Hata durumunda da başlangıç şehri için tekrar deneme butonu koyabiliriz.
       return Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -172,38 +172,56 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         SafeArea(
-          // GÜNCELLENDİ: Yapıyı arama çubuğunu içerecek şekilde değiştirdik
           child: Padding(
-            padding: const EdgeInsets.all(20.0),
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
             child: Column(
               children: [
-                // YENİ: ARAMA ÇUBUĞU
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(15),
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                    child: TextField(
-                      controller: _searchController,
-                      style: const TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        hintText: 'Şehir ara...',
-                        hintStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
-                        prefixIcon: Icon(Icons.search, color: Colors.white.withOpacity(0.6)),
-                        filled: true,
-                        fillColor: Colors.white.withOpacity(0.1),
-                        border: InputBorder.none,
+                // V5 İÇİN TAMAMEN YENİDEN YAZILMIŞ YAPI
+                TypeAheadField<String>(
+                  controller: _searchController,
+                  suggestionsCallback: (pattern) {
+                    if (pattern.isEmpty) return [];
+                    return turkeyCities.where((city) => city.toLowerCase().startsWith(pattern.toLowerCase())).toList();
+                  },
+                  itemBuilder: (context, suggestion) {
+                    return ListTile(
+                      title: Text(suggestion),
+                    );
+                  },
+                  onSelected: (suggestion) {
+                    _fetchWeather(suggestion);
+                    _searchController.clear();
+                    FocusScope.of(context).unfocus();
+                  },
+                  builder: (context, controller, focusNode) {
+                    return ClipRRect(
+                      borderRadius: BorderRadius.circular(15),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                        child: TextField(
+                          controller: controller,
+                          focusNode: focusNode,
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            hintText: 'Şehir ara...',
+                            hintStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
+                            prefixIcon: Icon(Icons.search, color: Colors.white.withOpacity(0.6)),
+                            filled: true,
+                            fillColor: Colors.white.withOpacity(0.1),
+                            border: InputBorder.none,
+                          ),
+                          onSubmitted: (value) {
+                            if (value.isNotEmpty) {
+                              _fetchWeather(value);
+                              _searchController.clear();
+                              FocusScope.of(context).unfocus();
+                            }
+                          },
+                        ),
                       ),
-                      onSubmitted: (value) {
-                        if (value.isNotEmpty) {
-                          _fetchWeather(value); // Arama yapıldığında veriyi çek
-                          _searchController.clear(); // Arama çubuğunu temizle
-                        }
-                      },
-                    ),
-                  ),
+                    );
+                  },
                 ),
-
-                // GÜNCELLENDİ: Kalan içeriği Expanded ile sarıyoruz ki boşluğu doldursun
                 Expanded(
                   child: Center(
                     child: Column(
@@ -218,7 +236,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         Text(condition ?? '', style: AppTextStyles.conditionDisplay),
                         const SizedBox(height: 10),
                         Text('H: $highTemp°   L: $lowTemp°', style: AppTextStyles.highLowDisplay),
-                        const SizedBox(height: 120), // Yüksekliği azalttık
+                        const SizedBox(height: 60),
                       ],
                     ),
                   ),
@@ -227,7 +245,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
-        // DraggableScrollableSheet ve içeriği aynı kalıyor
         DraggableScrollableSheet(
           initialChildSize: 0.35,
           minChildSize: 0.35,
