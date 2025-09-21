@@ -1,11 +1,10 @@
-// home_screen.dart 'ın TAM ve GÜNCEL hali
-
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:lottie/lottie.dart';
 import 'package:skyly/core/constants/turkey_cities.dart';
 import 'package:skyly/api/weather_service.dart';
+import 'package:skyly/presentation/widgets/background_effects.dart';
 import 'package:skyly/presentation/widgets/daily_forecast_tile.dart';
 import 'package:skyly/presentation/widgets/hourly_forecast_card.dart';
 import 'package:skyly/presentation/widgets/stat_card.dart';
@@ -15,13 +14,11 @@ import 'package:intl/intl.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
-
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  // ... (Değişkenler, initState, dispose, _fetchWeather, _getWeatherUIElements, build aynı kalıyor)
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final WeatherService _weatherService = WeatherService();
   final TextEditingController _searchController = TextEditingController();
   Map<String, dynamic>? _weatherData;
@@ -118,8 +115,11 @@ class _HomeScreenState extends State<HomeScreen> {
         lottieAsset = 'assets/lottie/little sun.json';
         break;
     }
-
     return {'icon': staticIcon, 'gradient': gradient, 'lottie': lottieAsset};
+  }
+
+  Widget _buildBackgroundEffect(String? mainCondition) {
+    return BackgroundEffects(condition: mainCondition);
   }
 
   @override
@@ -130,8 +130,7 @@ class _HomeScreenState extends State<HomeScreen> {
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [AppColors.cloudySky_1, AppColors.cloudySky_2],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+            begin: Alignment.topCenter, end: Alignment.bottomCenter,
           ),
         ),
         child: const Center(child: CircularProgressIndicator(color: Colors.white)),
@@ -155,7 +154,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ));
     }
 
-    // ... (veri işleme kısmı aynı)
     final mainCondition = _weatherData!['weather'][0]['main'];
     final uiElements = _getWeatherUIElements(mainCondition);
     final cityName = _weatherData!['name'];
@@ -185,16 +183,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Stack(
       children: [
-        // ... (Arka plan ve ana widget'lar aynı)
         Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: uiElements['gradient'],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
+              begin: Alignment.topCenter, end: Alignment.bottomCenter,
             ),
           ),
         ),
+        _buildBackgroundEffect(mainCondition),
         SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
@@ -263,8 +260,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         Lottie.asset(
                           uiElements['lottie'],
-                          width: 180,
-                          height: 180,
+                          width: 180, height: 180,
                         ),
                         const SizedBox(height: 20),
                         Text(cityName, style: AppTextStyles.cityDisplay),
@@ -344,7 +340,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
                               return Padding(
                                 padding: const EdgeInsets.only(right: 12.0),
-                                // DEĞİŞİKLİK BURADA: Artık 'lottieAsset' gönderiyoruz
                                 child: HourlyForecastCard(
                                   time: DateFormat('HH:mm').format(time),
                                   lottieAsset: _getWeatherUIElements(condition)['lottie'],
@@ -371,7 +366,6 @@ class _HomeScreenState extends State<HomeScreen> {
                               final lowTemp = item['main']['temp_min'].round().toString();
                               final condition = item['weather'][0]['main'];
 
-                              // DEĞİŞİKLİK BURADA: Artık 'lottieAsset' gönderiyoruz
                               return DailyForecastTile(
                                 day: dayName,
                                 lottieAsset: _getWeatherUIElements(condition)['lottie'],
