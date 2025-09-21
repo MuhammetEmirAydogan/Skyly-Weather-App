@@ -1,24 +1,24 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import '../../core/theme/app_text_styles.dart';
 
 class StatCard extends StatelessWidget {
-  final IconData icon;
   final String label;
   final String value;
-  final Color? iconColor;
+  final String? lottieAsset; // Hareketli animasyon için dosya yolu
+  final IconData? staticIcon; // Hareketsiz ikon (Lottie olmayanlar için)
 
   const StatCard({
     super.key,
-    required this.icon,
     required this.label,
     required this.value,
-    this.iconColor,
+    this.lottieAsset,
+    this.staticIcon,
   });
 
   @override
   Widget build(BuildContext context) {
-    // Buzlu cam efekti için bu yapı kullanılır: ClipRRect -> BackdropFilter -> Container
     return ClipRRect(
       borderRadius: BorderRadius.circular(20),
       child: BackdropFilter(
@@ -35,22 +35,16 @@ class StatCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    label,
-                    style: AppTextStyles.statLabel,
-                  ),
-                  Icon(
-                    icon,
-                    color: iconColor ?? Colors.white70,
-                    size: 20,
-                  ),
+                  Text(label, style: AppTextStyles.statLabel),
+                  // Yeni mantık: Eğer lottieAsset varsa Lottie'yi, yoksa staticIcon'u göster
+                  if (lottieAsset != null)
+                    Lottie.asset(lottieAsset!, width: 40, height: 40)
+                  else if (staticIcon != null)
+                    Icon(staticIcon, color: Colors.white70, size: 24)
                 ],
               ),
-              const Spacer(), // Boşlukları doldurur
-              Text(
-                value,
-                style: AppTextStyles.statValue,
-              ),
+              const Spacer(),
+              Text(value, style: AppTextStyles.statValue),
             ],
           ),
         ),

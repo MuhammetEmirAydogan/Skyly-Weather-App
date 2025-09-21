@@ -70,59 +70,57 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // TEK VE GÜNCELLENMİŞ FONKSİYON
   Map<String, dynamic> _getWeatherUIElements(String? mainCondition) {
-    // API'den gelen ana hava durumu koşuluna göre UI elemanlarını döndürür
-    // Örn: mainCondition = "Clouds", "Rain", "Clear"
-
-    // Küçük ikonlar için de bir haritalama yapıyoruz
-    IconData staticIcon;
-    List<Color> gradient;
-    String lottieAsset;
-
-    switch (mainCondition?.toLowerCase()) {
-      case 'clouds':
-        staticIcon = Icons.cloud;
-        gradient = [AppColors.cloudySky_1, AppColors.cloudySky_2];
-        lottieAsset = 'assets/lottie/Clouds.json';
-        break;
-      case 'rain':
-      case 'drizzle':
-      case 'shower rain':
-        staticIcon = Icons.grain;
-        gradient = [const Color(0xff525252), const Color(0xff3d72b4)];
-        // Drizzle (çiseleme) için ayrı bir animasyon kullanabiliriz
-        lottieAsset = (mainCondition == 'drizzle')
-            ? 'assets/lottie/Weather-partly shower.json'
-            : 'assets/lottie/rainy icon.json';
-        break;
-      case 'thunderstorm':
-        staticIcon = Icons.thunderstorm;
-        gradient = [const Color(0xff232526), const Color(0xff414345)];
-        lottieAsset = 'assets/lottie/Weather-storm.json';
-        break;
-      case 'snow':
-        staticIcon = Icons.ac_unit;
-        gradient = [const Color(0xffe6e9f0), const Color(0xffeef1f5)];
-        lottieAsset = 'assets/lottie/Weather-snow.json';
-        break;
-      case 'mist':
-      case 'fog':
-      case 'haze':
-      case 'smoke':
-        staticIcon = Icons.foggy;
-        gradient = [const Color(0xffbdc3c7), const Color(0xff2c3e50)];
-        lottieAsset = 'assets/lottie/Fog Smoke.json';
-        break;
-      case 'clear':
-      default:
-        staticIcon = Icons.wb_sunny_rounded;
-        gradient = [AppColors.clearSky_1, AppColors.clearSky_2];
-        lottieAsset = 'assets/lottie/little sun.json';
-        break;
+    int weatherId = 800;
+    if (_weatherData != null && _weatherData!['weather'][0]['id'] != null) {
+      weatherId = _weatherData!['weather'][0]['id'];
     }
 
-    return {'icon': staticIcon, 'gradient': gradient, 'lottie': lottieAsset};
+    switch (weatherId) {
+      case >= 200 && < 300:
+        return {
+          'lottie': 'assets/lottie/Weather-storm.json',
+          'gradient': [const Color(0xff232526), const Color(0xff414345)],
+          'icon': Icons.thunderstorm,
+        };
+      case >= 300 && < 400:
+        return {
+          'lottie': 'assets/lottie/Weather-partly shower.json',
+          'gradient': [const Color(0xff525252), const Color(0xff3d72b4)],
+          'icon': Icons.grain,
+        };
+      case >= 500 && < 600:
+        return {
+          'lottie': 'assets/lottie/rainy icon.json',
+          'gradient': [const Color(0xff525252), const Color(0xff3d72b4)],
+          'icon': Icons.grain,
+        };
+      case >= 600 && < 700:
+        return {
+          'lottie': 'assets/lottie/Weather-snow.json',
+          'gradient': [const Color(0xffe6e9f0), const Color(0xffeef1f5)],
+          'icon': Icons.ac_unit,
+        };
+      case >= 700 && < 800:
+        return {
+          'lottie': 'assets/lottie/Fog Smoke.json',
+          'gradient': [const Color(0xffbdc3c7), const Color(0xff2c3e50)],
+          'icon': Icons.foggy,
+        };
+      case 800:
+        return {
+          'lottie': 'assets/lottie/little sun.json',
+          'gradient': [AppColors.clearSky_1, AppColors.clearSky_2],
+          'icon': Icons.wb_sunny_rounded,
+        };
+      case > 800:
+      default:
+        return {
+          'lottie': 'assets/lottie/Clouds.json',
+          'gradient': [AppColors.cloudySky_1, AppColors.cloudySky_2],
+          'icon': Icons.cloud,
+        };
+    }
   }
 
   @override
@@ -166,6 +164,11 @@ class _HomeScreenState extends State<HomeScreen> {
     final lowTemp = _weatherData!['main']['temp_min'].round();
     final windSpeed = (_weatherData!['wind']['speed'] * 3.6).round();
     final humidity = _weatherData!['main']['humidity'];
+
+    final sunriseTimestamp = _weatherData!['sys']['sunrise'];
+    final sunsetTimestamp = _weatherData!['sys']['sunset'];
+    final sunriseTime = DateFormat('HH:mm').format(DateTime.fromMillisecondsSinceEpoch(sunriseTimestamp * 1000));
+    final sunsetTime = DateFormat('HH:mm').format(DateTime.fromMillisecondsSinceEpoch(sunsetTimestamp * 1000));
 
     final List forecastList = _forecastData!['list'];
     final List hourlyForecasts = forecastList.take(8).toList();
@@ -277,7 +280,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         DraggableScrollableSheet(
-          initialChildSize: 0.35, minChildSize: 0.35, maxChildSize: 0.8,
+          initialChildSize: 0.45,
+          minChildSize: 0.45,
+          maxChildSize: 0.9,
           builder: (context, scrollController) {
             return SingleChildScrollView(
               controller: scrollController,
@@ -304,10 +309,14 @@ class _HomeScreenState extends State<HomeScreen> {
                             childAspectRatio: 1.5, shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
                             children: [
-                              StatCard(icon: Icons.air, label: 'Rüzgar', value: '$windSpeed km/s'),
-                              StatCard(icon: Icons.water_drop_outlined, label: 'Nem', value: '%$humidity'),
-                              const StatCard(icon: Icons.person_search, label: 'AQI', value: '45'),
-                              const StatCard(icon: Icons.wb_sunny_outlined, label: 'UV İndeksi', value: '7'),
+                              // DOSYA İSİMLERİ BURADA GÜNCELLENDİ
+                              StatCard(lottieAsset: 'assets/lottie/Wind Gust.json', label: 'Rüzgar', value: '$windSpeed km/s'),
+                              StatCard(lottieAsset: 'assets/lottie/humidity.json', label: 'Nem', value: '%$humidity'),
+                              StatCard(lottieAsset: 'assets/lottie/sunrise.json', label: 'Gün Doğumu', value: sunriseTime),
+                              // GÜN BATIMI İÇİN DE GÜN DOĞUMU ANİMASYONU KULLANILDI
+                              StatCard(lottieAsset: 'assets/lottie/sunrise.json', label: 'Gün Batımı', value: sunsetTime),
+                              const StatCard(staticIcon: Icons.person_search, label: 'AQI', value: '45'),
+                              const StatCard(staticIcon: Icons.wb_sunny_outlined, label: 'UV İndeksi', value: '7'),
                             ],
                           ),
                         ),
