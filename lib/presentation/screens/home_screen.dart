@@ -1,14 +1,13 @@
-// home_screen.dart (Konum Servisli Son Hali)
-
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:lottie/lottie.dart';
-import 'package:skyly/api/location_service.dart'; // YENİ: Konum servisini import et
+import 'package:skyly/api/location_service.dart'; // EKLENDİ: Eksik olan import
 import 'package:skyly/core/constants/turkey_cities.dart';
 import 'package:skyly/api/weather_service.dart';
 import 'package:skyly/presentation/widgets/background_effects.dart';
 import 'package:skyly/presentation/widgets/daily_forecast_tile.dart';
+import 'package:skyly/presentation/widgets/favorite_city_chip.dart';
 import 'package:skyly/presentation/widgets/hourly_forecast_card.dart';
 import 'package:skyly/presentation/widgets/stat_card.dart';
 import '../../core/theme/app_colors.dart';
@@ -23,19 +22,28 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final WeatherService _weatherService = WeatherService();
-  final LocationService _locationService = LocationService(); // YENİ: Konum servisinden nesne
+  final LocationService _locationService = LocationService(); // EKLENDİ: Eksik olan değişken
   final TextEditingController _searchController = TextEditingController();
   Map<String, dynamic>? _weatherData;
   Map<String, dynamic>? _forecastData;
   bool _isLoading = true;
 
+  final List<String> _favoriteCities = const [
+    'Istanbul', 'Ankara', 'Izmir', 'Antalya', 'Bursa'
+  ];
+
   @override
   void initState() {
     super.initState();
-    _fetchWeatherForCurrentUserLocation(); // YENİ: Başlangıç fonksiyonu değişti
+    _fetchWeatherForCurrentUserLocation();
   }
 
-  // YENİ FONKSİYON: Önce konumu al, sonra hava durumunu çek
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> _fetchWeatherForCurrentUserLocation() async {
     setState(() { _isLoading = true; });
     try {
@@ -43,14 +51,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       await _fetchWeather(cityName);
     } catch (e) {
       print("Konum hatası veya izin reddi: $e");
-      // Konum alınamazsa varsayılan olarak İstanbul'u yükle
       await _fetchWeather();
     }
   }
 
-  // GÜNCELLENDİ: Sadece hava durumu verisini çekmeye odaklandı
   Future<void> _fetchWeather([String cityName = 'Istanbul']) async {
-    // Sadece yeni arama yapılırken yükleme animasyonu göster
     if (!_isLoading) {
       setState(() { _isLoading = true; });
     }
@@ -86,7 +91,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
-  // ... (Geri kalan tüm fonksiyonlar ve widget'lar aynı kalıyor)
   Map<String, dynamic> _getWeatherUIElements(String? mainCondition) {
     IconData staticIcon;
     List<Color> gradient;
@@ -281,6 +285,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 15),
+                SizedBox(
+                  height: 40,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _favoriteCities.length,
+                    itemBuilder: (context, index) {
+                      final city = _favoriteCities[index];
+                      return FavoriteCityChip(
+                        cityName: city,
+                        isSelected: city == cityName,
+                        onTap: () {
+                          _fetchWeather(city);
+                        },
+                      );
+                    },
+                  ),
                 ),
                 Expanded(
                   child: Center(
