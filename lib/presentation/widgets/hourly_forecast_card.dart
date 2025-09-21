@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart'; // Lottie import'u eklendi
 import '../../core/theme/app_text_styles.dart';
 
 class HourlyForecastCard extends StatelessWidget {
   final String time;
-  final IconData icon;
+  final String lottieAsset; // IconData yerine lottieAsset
   final String temperature;
 
   const HourlyForecastCard({
     super.key,
     required this.time,
-    required this.icon,
+    required this.lottieAsset, // Değişti
     required this.temperature,
   });
 
@@ -26,7 +27,8 @@ class HourlyForecastCard extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           Text(time, style: AppTextStyles.statLabel),
-          Icon(icon, color: Colors.white, size: 32),
+          // Icon yerine Lottie.asset geldi
+          Lottie.asset(lottieAsset, width: 48, height: 48),
           Text('$temperature°', style: AppTextStyles.forecastTemp),
         ],
       ),

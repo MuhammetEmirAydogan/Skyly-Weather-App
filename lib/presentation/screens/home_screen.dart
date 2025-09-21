@@ -1,3 +1,5 @@
+// home_screen.dart 'ın TAM ve GÜNCEL hali
+
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
@@ -19,6 +21,7 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  // ... (Değişkenler, initState, dispose, _fetchWeather, _getWeatherUIElements, build aynı kalıyor)
   final WeatherService _weatherService = WeatherService();
   final TextEditingController _searchController = TextEditingController();
   Map<String, dynamic>? _weatherData;
@@ -71,56 +74,52 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Map<String, dynamic> _getWeatherUIElements(String? mainCondition) {
-    int weatherId = 800;
-    if (_weatherData != null && _weatherData!['weather'][0]['id'] != null) {
-      weatherId = _weatherData!['weather'][0]['id'];
+    IconData staticIcon;
+    List<Color> gradient;
+    String lottieAsset;
+
+    switch (mainCondition?.toLowerCase()) {
+      case 'clouds':
+        staticIcon = Icons.cloud;
+        gradient = [AppColors.cloudySky_1, AppColors.cloudySky_2];
+        lottieAsset = 'assets/lottie/Clouds.json';
+        break;
+      case 'rain':
+      case 'drizzle':
+      case 'shower rain':
+        staticIcon = Icons.grain;
+        gradient = [const Color(0xff525252), const Color(0xff3d72b4)];
+        lottieAsset = (mainCondition == 'drizzle')
+            ? 'assets/lottie/Weather-partly shower.json'
+            : 'assets/lottie/rainy icon.json';
+        break;
+      case 'thunderstorm':
+        staticIcon = Icons.thunderstorm;
+        gradient = [const Color(0xff232526), const Color(0xff414345)];
+        lottieAsset = 'assets/lottie/Weather-storm.json';
+        break;
+      case 'snow':
+        staticIcon = Icons.ac_unit;
+        gradient = [const Color(0xffe6e9f0), const Color(0xffeef1f5)];
+        lottieAsset = 'assets/lottie/Weather-snow.json';
+        break;
+      case 'mist':
+      case 'fog':
+      case 'haze':
+      case 'smoke':
+        staticIcon = Icons.foggy;
+        gradient = [const Color(0xffbdc3c7), const Color(0xff2c3e50)];
+        lottieAsset = 'assets/lottie/Fog Smoke.json';
+        break;
+      case 'clear':
+      default:
+        staticIcon = Icons.wb_sunny_rounded;
+        gradient = [AppColors.clearSky_1, AppColors.clearSky_2];
+        lottieAsset = 'assets/lottie/little sun.json';
+        break;
     }
 
-    switch (weatherId) {
-      case >= 200 && < 300:
-        return {
-          'lottie': 'assets/lottie/Weather-storm.json',
-          'gradient': [const Color(0xff232526), const Color(0xff414345)],
-          'icon': Icons.thunderstorm,
-        };
-      case >= 300 && < 400:
-        return {
-          'lottie': 'assets/lottie/Weather-partly shower.json',
-          'gradient': [const Color(0xff525252), const Color(0xff3d72b4)],
-          'icon': Icons.grain,
-        };
-      case >= 500 && < 600:
-        return {
-          'lottie': 'assets/lottie/rainy icon.json',
-          'gradient': [const Color(0xff525252), const Color(0xff3d72b4)],
-          'icon': Icons.grain,
-        };
-      case >= 600 && < 700:
-        return {
-          'lottie': 'assets/lottie/Weather-snow.json',
-          'gradient': [const Color(0xffe6e9f0), const Color(0xffeef1f5)],
-          'icon': Icons.ac_unit,
-        };
-      case >= 700 && < 800:
-        return {
-          'lottie': 'assets/lottie/Fog Smoke.json',
-          'gradient': [const Color(0xffbdc3c7), const Color(0xff2c3e50)],
-          'icon': Icons.foggy,
-        };
-      case 800:
-        return {
-          'lottie': 'assets/lottie/little sun.json',
-          'gradient': [AppColors.clearSky_1, AppColors.clearSky_2],
-          'icon': Icons.wb_sunny_rounded,
-        };
-      case > 800:
-      default:
-        return {
-          'lottie': 'assets/lottie/Clouds.json',
-          'gradient': [AppColors.cloudySky_1, AppColors.cloudySky_2],
-          'icon': Icons.cloud,
-        };
-    }
+    return {'icon': staticIcon, 'gradient': gradient, 'lottie': lottieAsset};
   }
 
   @override
@@ -131,7 +130,8 @@ class _HomeScreenState extends State<HomeScreen> {
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [AppColors.cloudySky_1, AppColors.cloudySky_2],
-            begin: Alignment.topCenter, end: Alignment.bottomCenter,
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
           ),
         ),
         child: const Center(child: CircularProgressIndicator(color: Colors.white)),
@@ -155,6 +155,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ));
     }
 
+    // ... (veri işleme kısmı aynı)
     final mainCondition = _weatherData!['weather'][0]['main'];
     final uiElements = _getWeatherUIElements(mainCondition);
     final cityName = _weatherData!['name'];
@@ -184,11 +185,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Stack(
       children: [
+        // ... (Arka plan ve ana widget'lar aynı)
         Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: uiElements['gradient'],
-              begin: Alignment.topCenter, end: Alignment.bottomCenter,
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
             ),
           ),
         ),
@@ -260,7 +263,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         Lottie.asset(
                           uiElements['lottie'],
-                          width: 180, height: 180,
+                          width: 180,
+                          height: 180,
                         ),
                         const SizedBox(height: 20),
                         Text(cityName, style: AppTextStyles.cityDisplay),
@@ -288,7 +292,8 @@ class _HomeScreenState extends State<HomeScreen> {
               controller: scrollController,
               child: ClipRRect(
                 borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(30), topRight: Radius.circular(30),
+                  topLeft: Radius.circular(30),
+                  topRight: Radius.circular(30),
                 ),
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
@@ -297,7 +302,8 @@ class _HomeScreenState extends State<HomeScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.1),
                       borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(30), topRight: Radius.circular(30),
+                        topLeft: Radius.circular(30),
+                        topRight: Radius.circular(30),
                       ),
                     ),
                     child: Column(
@@ -305,15 +311,16 @@ class _HomeScreenState extends State<HomeScreen> {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 24.0),
                           child: GridView.count(
-                            crossAxisCount: 2, crossAxisSpacing: 16, mainAxisSpacing: 16,
-                            childAspectRatio: 1.5, shrinkWrap: true,
+                            crossAxisCount: 2,
+                            crossAxisSpacing: 16,
+                            mainAxisSpacing: 16,
+                            childAspectRatio: 1.5,
+                            shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
                             children: [
-                              // DOSYA İSİMLERİ BURADA GÜNCELLENDİ
                               StatCard(lottieAsset: 'assets/lottie/Wind Gust.json', label: 'Rüzgar', value: '$windSpeed km/s'),
                               StatCard(lottieAsset: 'assets/lottie/humidity.json', label: 'Nem', value: '%$humidity'),
                               StatCard(lottieAsset: 'assets/lottie/sunrise.json', label: 'Gün Doğumu', value: sunriseTime),
-                              // GÜN BATIMI İÇİN DE GÜN DOĞUMU ANİMASYONU KULLANILDI
                               StatCard(lottieAsset: 'assets/lottie/sunrise.json', label: 'Gün Batımı', value: sunsetTime),
                               const StatCard(staticIcon: Icons.person_search, label: 'AQI', value: '45'),
                               const StatCard(staticIcon: Icons.wb_sunny_outlined, label: 'UV İndeksi', value: '7'),
@@ -333,12 +340,14 @@ class _HomeScreenState extends State<HomeScreen> {
                               final item = hourlyForecasts[index];
                               final time = DateTime.fromMillisecondsSinceEpoch(item['dt'] * 1000);
                               final temp = item['main']['temp'].round().toString();
+                              final condition = item['weather'][0]['main'];
 
                               return Padding(
                                 padding: const EdgeInsets.only(right: 12.0),
+                                // DEĞİŞİKLİK BURADA: Artık 'lottieAsset' gönderiyoruz
                                 child: HourlyForecastCard(
                                   time: DateFormat('HH:mm').format(time),
-                                  icon: _getWeatherUIElements(item['weather'][0]['main'])['icon'],
+                                  lottieAsset: _getWeatherUIElements(condition)['lottie'],
                                   temperature: temp,
                                 ),
                               );
@@ -360,10 +369,12 @@ class _HomeScreenState extends State<HomeScreen> {
                               final dayName = DateFormat('EEEE', 'tr_TR').format(date);
                               final highTemp = item['main']['temp_max'].round().toString();
                               final lowTemp = item['main']['temp_min'].round().toString();
+                              final condition = item['weather'][0]['main'];
 
+                              // DEĞİŞİKLİK BURADA: Artık 'lottieAsset' gönderiyoruz
                               return DailyForecastTile(
                                 day: dayName,
-                                icon: _getWeatherUIElements(item['weather'][0]['main'])['icon'],
+                                lottieAsset: _getWeatherUIElements(condition)['lottie'],
                                 highTemp: highTemp,
                                 lowTemp: lowTemp,
                               );
