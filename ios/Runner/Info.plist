@@ -45,5 +45,8 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-</dict>
+
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Bulunduğunuz yerin hava durumunu göstermek için konumunuza ihtiyacımız var.</string>
+	</dict>
 </plist>

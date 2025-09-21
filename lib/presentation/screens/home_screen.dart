@@ -1,7 +1,10 @@
+// home_screen.dart (Konum Servisli Son Hali)
+
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:lottie/lottie.dart';
+import 'package:skyly/api/location_service.dart'; // YENİ: Konum servisini import et
 import 'package:skyly/core/constants/turkey_cities.dart';
 import 'package:skyly/api/weather_service.dart';
 import 'package:skyly/presentation/widgets/background_effects.dart';
@@ -20,6 +23,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final WeatherService _weatherService = WeatherService();
+  final LocationService _locationService = LocationService(); // YENİ: Konum servisinden nesne
   final TextEditingController _searchController = TextEditingController();
   Map<String, dynamic>? _weatherData;
   Map<String, dynamic>? _forecastData;
@@ -28,21 +32,31 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    _fetchWeather();
+    _fetchWeatherForCurrentUserLocation(); // YENİ: Başlangıç fonksiyonu değişti
   }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
+  // YENİ FONKSİYON: Önce konumu al, sonra hava durumunu çek
+  Future<void> _fetchWeatherForCurrentUserLocation() async {
+    setState(() { _isLoading = true; });
+    try {
+      String cityName = await _locationService.getCurrentCity();
+      await _fetchWeather(cityName);
+    } catch (e) {
+      print("Konum hatası veya izin reddi: $e");
+      // Konum alınamazsa varsayılan olarak İstanbul'u yükle
+      await _fetchWeather();
+    }
   }
 
+  // GÜNCELLENDİ: Sadece hava durumu verisini çekmeye odaklandı
   Future<void> _fetchWeather([String cityName = 'Istanbul']) async {
-    setState(() {
-      _isLoading = true;
-      _weatherData = null;
-      _forecastData = null;
-    });
+    // Sadece yeni arama yapılırken yükleme animasyonu göster
+    if (!_isLoading) {
+      setState(() { _isLoading = true; });
+    }
+
+    _weatherData = null;
+    _forecastData = null;
 
     try {
       final results = await Future.wait([
@@ -64,12 +78,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         );
       }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if(mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
+  // ... (Geri kalan tüm fonksiyonlar ve widget'lar aynı kalıyor)
   Map<String, dynamic> _getWeatherUIElements(String? mainCondition) {
     IconData staticIcon;
     List<Color> gradient;
@@ -148,7 +165,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               const Text('Veri yüklenemedi.', style: TextStyle(color: Colors.white)),
               IconButton(
                 icon: const Icon(Icons.refresh, color: Colors.white),
-                onPressed: () => _fetchWeather(),
+                onPressed: () => _fetchWeatherForCurrentUserLocation(),
               )
             ],
           ));
@@ -197,16 +214,15 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
             child: Column(
               children: [
-                // YENİ: LOGO VE ARAMA KUTUSU YAN YANA
                 Row(
                   children: [
                     Image.asset(
                       'assets/images/logo.png',
-                      width: 50, // Daha küçük bir boyut
+                      width: 50,
                       height: 50,
                     ),
-                    const SizedBox(width: 10), // Logo ile arama kutusu arasında boşluk
-                    Expanded( // Arama kutusu kalan alanı kaplar
+                    const SizedBox(width: 10),
+                    Expanded(
                       child: TypeAheadField<String>(
                         controller: _searchController,
                         suggestionsCallback: (pattern) {
@@ -266,7 +282,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     ),
                   ],
                 ),
-                // Lottie animasyonunu merkeze almak için kalan kısım
                 Expanded(
                   child: Center(
                     child: Column(
@@ -274,7 +289,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       children: [
                         Lottie.asset(
                           uiElements['lottie'],
-                          width: 150, height: 150, // Boyutu biraz küçülttük
+                          width: 150, height: 150,
                         ),
                         const SizedBox(height: 10),
                         Text(cityName, style: AppTextStyles.cityDisplay),
@@ -294,7 +309,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ),
         DraggableScrollableSheet(
-          initialChildSize: 0.20, // Belirttiğin gibi %20
+          initialChildSize: 0.20,
           minChildSize: 0.20,
           maxChildSize: 0.9,
           builder: (context, scrollController) {
