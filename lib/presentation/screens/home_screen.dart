@@ -197,62 +197,76 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
             child: Column(
               children: [
-                TypeAheadField<String>(
-                  controller: _searchController,
-                  suggestionsCallback: (pattern) {
-                    if (pattern.isEmpty) return [];
-                    return turkeyCities.where((city) => city.toLowerCase().startsWith(pattern.toLowerCase())).toList();
-                  },
-                  itemBuilder: (context, suggestion) {
-                    return ListTile(title: Text(suggestion));
-                  },
-                  onSelected: (suggestion) {
-                    _fetchWeather(suggestion);
-                    _searchController.clear();
-                    FocusScope.of(context).unfocus();
-                  },
-                  builder: (context, controller, focusNode) {
-                    return ClipRRect(
-                      borderRadius: BorderRadius.circular(15),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-                        child: TextField(
-                          controller: controller,
-                          focusNode: focusNode,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: InputDecoration(
-                            hintText: 'Şehir ara...',
-                            hintStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
-                            prefixIcon: Icon(Icons.search, color: Colors.white.withOpacity(0.6)),
-                            filled: true,
-                            fillColor: Colors.white.withOpacity(0.1),
-                            border: InputBorder.none,
-                          ),
-                          onSubmitted: (value) {
-                            if (value.isNotEmpty) {
-                              _fetchWeather(value);
-                              _searchController.clear();
-                              FocusScope.of(context).unfocus();
-                            }
-                          },
-                        ),
+                // YENİ: LOGO VE ARAMA KUTUSU YAN YANA
+                Row(
+                  children: [
+                    Image.asset(
+                      'assets/images/logo.png',
+                      width: 50, // Daha küçük bir boyut
+                      height: 50,
+                    ),
+                    const SizedBox(width: 10), // Logo ile arama kutusu arasında boşluk
+                    Expanded( // Arama kutusu kalan alanı kaplar
+                      child: TypeAheadField<String>(
+                        controller: _searchController,
+                        suggestionsCallback: (pattern) {
+                          if (pattern.isEmpty) return [];
+                          return turkeyCities.where((city) => city.toLowerCase().startsWith(pattern.toLowerCase())).toList();
+                        },
+                        itemBuilder: (context, suggestion) {
+                          return ListTile(title: Text(suggestion));
+                        },
+                        onSelected: (suggestion) {
+                          _fetchWeather(suggestion);
+                          _searchController.clear();
+                          FocusScope.of(context).unfocus();
+                        },
+                        builder: (context, controller, focusNode) {
+                          return ClipRRect(
+                            borderRadius: BorderRadius.circular(15),
+                            child: BackdropFilter(
+                              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                              child: TextField(
+                                controller: controller,
+                                focusNode: focusNode,
+                                style: const TextStyle(color: Colors.white),
+                                decoration: InputDecoration(
+                                  hintText: 'Şehir ara...',
+                                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.6)),
+                                  prefixIcon: Icon(Icons.search, color: Colors.white.withOpacity(0.6)),
+                                  filled: true,
+                                  fillColor: Colors.white.withOpacity(0.1),
+                                  border: InputBorder.none,
+                                ),
+                                onSubmitted: (value) {
+                                  if (value.isNotEmpty) {
+                                    _fetchWeather(value);
+                                    _searchController.clear();
+                                    FocusScope.of(context).unfocus();
+                                  }
+                                },
+                              ),
+                            ),
+                          );
+                        },
+                        listBuilder: (context, children) {
+                          if (children.isEmpty) return const SizedBox.shrink();
+                          return Material(
+                            elevation: 4.0,
+                            borderRadius: BorderRadius.circular(15),
+                            color: Colors.white,
+                            child: ListView(
+                              padding: EdgeInsets.zero,
+                              shrinkWrap: true,
+                              children: children.toList(),
+                            ),
+                          );
+                        },
                       ),
-                    );
-                  },
-                  listBuilder: (context, children) {
-                    if (children.isEmpty) return const SizedBox.shrink();
-                    return Material(
-                      elevation: 4.0,
-                      borderRadius: BorderRadius.circular(15),
-                      color: Colors.white,
-                      child: ListView(
-                        padding: EdgeInsets.zero,
-                        shrinkWrap: true,
-                        children: children.toList(),
-                      ),
-                    );
-                  },
+                    ),
+                  ],
                 ),
+                // Lottie animasyonunu merkeze almak için kalan kısım
                 Expanded(
                   child: Center(
                     child: Column(
@@ -260,9 +274,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       children: [
                         Lottie.asset(
                           uiElements['lottie'],
-                          width: 180, height: 180,
+                          width: 150, height: 150, // Boyutu biraz küçülttük
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 10),
                         Text(cityName, style: AppTextStyles.cityDisplay),
                         const SizedBox(height: 10),
                         Text('$temperature°', style: AppTextStyles.temperatureDisplay),
@@ -270,7 +284,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         Text(condition ?? '', style: AppTextStyles.conditionDisplay),
                         const SizedBox(height: 10),
                         Text('H: $highTemp°   L: $lowTemp°', style: AppTextStyles.highLowDisplay),
-                        const SizedBox(height: 60),
+                        const SizedBox(height: 20),
                       ],
                     ),
                   ),
@@ -280,8 +294,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ),
         DraggableScrollableSheet(
-          initialChildSize: 0.45,
-          minChildSize: 0.45,
+          initialChildSize: 0.20, // Belirttiğin gibi %20
+          minChildSize: 0.20,
           maxChildSize: 0.9,
           builder: (context, scrollController) {
             return SingleChildScrollView(
