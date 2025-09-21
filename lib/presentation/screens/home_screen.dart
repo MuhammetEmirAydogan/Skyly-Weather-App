@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
+import 'package:lottie/lottie.dart';
 import 'package:skyly/core/constants/turkey_cities.dart';
 import 'package:skyly/api/weather_service.dart';
 import 'package:skyly/presentation/widgets/daily_forecast_tile.dart';
@@ -21,6 +22,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final WeatherService _weatherService = WeatherService();
   final TextEditingController _searchController = TextEditingController();
   Map<String, dynamic>? _weatherData;
+  Map<String, dynamic>? _forecastData;
   bool _isLoading = true;
 
   @override
@@ -38,12 +40,18 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _fetchWeather([String cityName = 'Istanbul']) async {
     setState(() {
       _isLoading = true;
+      _weatherData = null;
+      _forecastData = null;
     });
 
     try {
-      final data = await _weatherService.getWeatherData(cityName);
+      final results = await Future.wait([
+        _weatherService.getWeatherData(cityName),
+        _weatherService.getForecastData(cityName),
+      ]);
       setState(() {
-        _weatherData = data;
+        _weatherData = results[0] as Map<String, dynamic>;
+        _forecastData = results[1] as Map<String, dynamic>;
       });
     } catch (e) {
       print('Hata Yakalandı: $e');
@@ -62,59 +70,59 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Map<String, dynamic> _getWeatherUIElements(String? condition) {
-    if (condition == null) {
-      return {
-        'icon': Icons.cloud_off,
-        'gradient': [AppColors.cloudySky_1, AppColors.cloudySky_2],
-        'iconColor': Colors.grey,
-      };
-    }
+  // TEK VE GÜNCELLENMİŞ FONKSİYON
+  Map<String, dynamic> _getWeatherUIElements(String? mainCondition) {
+    // API'den gelen ana hava durumu koşuluna göre UI elemanlarını döndürür
+    // Örn: mainCondition = "Clouds", "Rain", "Clear"
 
-    switch (condition.toLowerCase()) {
+    // Küçük ikonlar için de bir haritalama yapıyoruz
+    IconData staticIcon;
+    List<Color> gradient;
+    String lottieAsset;
+
+    switch (mainCondition?.toLowerCase()) {
       case 'clouds':
-        return {
-          'icon': Icons.cloud,
-          'gradient': [AppColors.cloudySky_1, AppColors.cloudySky_2],
-          'iconColor': Colors.white,
-        };
+        staticIcon = Icons.cloud;
+        gradient = [AppColors.cloudySky_1, AppColors.cloudySky_2];
+        lottieAsset = 'assets/lottie/Clouds.json';
+        break;
       case 'rain':
       case 'drizzle':
       case 'shower rain':
-        return {
-          'icon': Icons.grain,
-          'gradient': [const Color(0xff525252), const Color(0xff3d72b4)],
-          'iconColor': Colors.blue.shade200,
-        };
+        staticIcon = Icons.grain;
+        gradient = [const Color(0xff525252), const Color(0xff3d72b4)];
+        // Drizzle (çiseleme) için ayrı bir animasyon kullanabiliriz
+        lottieAsset = (mainCondition == 'drizzle')
+            ? 'assets/lottie/Weather-partly shower.json'
+            : 'assets/lottie/rainy icon.json';
+        break;
       case 'thunderstorm':
-        return {
-          'icon': Icons.thunderstorm,
-          'gradient': [const Color(0xff232526), const Color(0xff414345)],
-          'iconColor': Colors.yellow,
-        };
+        staticIcon = Icons.thunderstorm;
+        gradient = [const Color(0xff232526), const Color(0xff414345)];
+        lottieAsset = 'assets/lottie/Weather-storm.json';
+        break;
       case 'snow':
-        return {
-          'icon': Icons.ac_unit,
-          'gradient': [const Color(0xffe6e9f0), const Color(0xffeef1f5)],
-          'iconColor': Colors.lightBlue,
-        };
+        staticIcon = Icons.ac_unit;
+        gradient = [const Color(0xffe6e9f0), const Color(0xffeef1f5)];
+        lottieAsset = 'assets/lottie/Weather-snow.json';
+        break;
       case 'mist':
       case 'fog':
       case 'haze':
       case 'smoke':
-        return {
-          'icon': Icons.foggy,
-          'gradient': [const Color(0xffbdc3c7), const Color(0xff2c3e50)],
-          'iconColor': Colors.white54,
-        };
+        staticIcon = Icons.foggy;
+        gradient = [const Color(0xffbdc3c7), const Color(0xff2c3e50)];
+        lottieAsset = 'assets/lottie/Fog Smoke.json';
+        break;
       case 'clear':
       default:
-        return {
-          'icon': Icons.wb_sunny_rounded,
-          'gradient': [AppColors.clearSky_1, AppColors.clearSky_2],
-          'iconColor': Colors.yellow,
-        };
+        staticIcon = Icons.wb_sunny_rounded;
+        gradient = [AppColors.clearSky_1, AppColors.clearSky_2];
+        lottieAsset = 'assets/lottie/little sun.json';
+        break;
     }
+
+    return {'icon': staticIcon, 'gradient': gradient, 'lottie': lottieAsset};
   }
 
   @override
@@ -125,8 +133,7 @@ class _HomeScreenState extends State<HomeScreen> {
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [AppColors.cloudySky_1, AppColors.cloudySky_2],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+            begin: Alignment.topCenter, end: Alignment.bottomCenter,
           ),
         ),
         child: const Center(child: CircularProgressIndicator(color: Colors.white)),
@@ -136,7 +143,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildWeatherUI() {
-    if (_weatherData == null) {
+    if (_weatherData == null || _forecastData == null) {
       return Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -160,14 +167,25 @@ class _HomeScreenState extends State<HomeScreen> {
     final windSpeed = (_weatherData!['wind']['speed'] * 3.6).round();
     final humidity = _weatherData!['main']['humidity'];
 
+    final List forecastList = _forecastData!['list'];
+    final List hourlyForecasts = forecastList.take(8).toList();
+    final Map<String, dynamic> dailyForecasts = {};
+    for (var forecast in forecastList) {
+      final date = DateTime.fromMillisecondsSinceEpoch(forecast['dt'] * 1000);
+      final dayKey = DateFormat('yyyy-MM-dd').format(date);
+      if (!dailyForecasts.containsKey(dayKey) && date.hour >= 12) {
+        dailyForecasts[dayKey] = forecast;
+      }
+    }
+    final dailyForecastList = dailyForecasts.values.take(5).toList();
+
     return Stack(
       children: [
         Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: uiElements['gradient'],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
+              begin: Alignment.topCenter, end: Alignment.bottomCenter,
             ),
           ),
         ),
@@ -176,7 +194,6 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
             child: Column(
               children: [
-                // V5 İÇİN TAMAMEN YENİDEN YAZILMIŞ YAPI
                 TypeAheadField<String>(
                   controller: _searchController,
                   suggestionsCallback: (pattern) {
@@ -184,9 +201,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     return turkeyCities.where((city) => city.toLowerCase().startsWith(pattern.toLowerCase())).toList();
                   },
                   itemBuilder: (context, suggestion) {
-                    return ListTile(
-                      title: Text(suggestion),
-                    );
+                    return ListTile(title: Text(suggestion));
                   },
                   onSelected: (suggestion) {
                     _fetchWeather(suggestion);
@@ -221,13 +236,29 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                     );
                   },
+                  listBuilder: (context, children) {
+                    if (children.isEmpty) return const SizedBox.shrink();
+                    return Material(
+                      elevation: 4.0,
+                      borderRadius: BorderRadius.circular(15),
+                      color: Colors.white,
+                      child: ListView(
+                        padding: EdgeInsets.zero,
+                        shrinkWrap: true,
+                        children: children.toList(),
+                      ),
+                    );
+                  },
                 ),
                 Expanded(
                   child: Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(uiElements['icon'], size: 160, color: uiElements['iconColor']),
+                        Lottie.asset(
+                          uiElements['lottie'],
+                          width: 180, height: 180,
+                        ),
                         const SizedBox(height: 20),
                         Text(cityName, style: AppTextStyles.cityDisplay),
                         const SizedBox(height: 10),
@@ -246,16 +277,13 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         DraggableScrollableSheet(
-          initialChildSize: 0.35,
-          minChildSize: 0.35,
-          maxChildSize: 0.8,
+          initialChildSize: 0.35, minChildSize: 0.35, maxChildSize: 0.8,
           builder: (context, scrollController) {
             return SingleChildScrollView(
               controller: scrollController,
               child: ClipRRect(
                 borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(30),
-                  topRight: Radius.circular(30),
+                  topLeft: Radius.circular(30), topRight: Radius.circular(30),
                 ),
                 child: BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
@@ -264,8 +292,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.1),
                       borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(30),
-                        topRight: Radius.circular(30),
+                        topLeft: Radius.circular(30), topRight: Radius.circular(30),
                       ),
                     ),
                     child: Column(
@@ -273,11 +300,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 24.0),
                           child: GridView.count(
-                            crossAxisCount: 2,
-                            crossAxisSpacing: 16,
-                            mainAxisSpacing: 16,
-                            childAspectRatio: 1.5,
-                            shrinkWrap: true,
+                            crossAxisCount: 2, crossAxisSpacing: 16, mainAxisSpacing: 16,
+                            childAspectRatio: 1.5, shrinkWrap: true,
                             physics: const NeverScrollableScrollPhysics(),
                             children: [
                               StatCard(icon: Icons.air, label: 'Rüzgar', value: '$windSpeed km/s'),
@@ -292,18 +316,24 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(height: 20),
                         SizedBox(
                           height: 140,
-                          child: ListView(
+                          child: ListView.builder(
                             scrollDirection: Axis.horizontal,
                             padding: const EdgeInsets.symmetric(horizontal: 24),
-                            children: const [
-                              HourlyForecastCard(time: '19:00', icon: Icons.wb_sunny, temperature: '21'),
-                              SizedBox(width: 12),
-                              HourlyForecastCard(time: '20:00', icon: Icons.wb_sunny, temperature: '20'),
-                              SizedBox(width: 12),
-                              HourlyForecastCard(time: '21:00', icon: Icons.wb_sunny, temperature: '19'),
-                              SizedBox(width: 12),
-                              HourlyForecastCard(time: '22:00', icon: Icons.nightlight_round, temperature: '18'),
-                            ],
+                            itemCount: hourlyForecasts.length,
+                            itemBuilder: (context, index) {
+                              final item = hourlyForecasts[index];
+                              final time = DateTime.fromMillisecondsSinceEpoch(item['dt'] * 1000);
+                              final temp = item['main']['temp'].round().toString();
+
+                              return Padding(
+                                padding: const EdgeInsets.only(right: 12.0),
+                                child: HourlyForecastCard(
+                                  time: DateFormat('HH:mm').format(time),
+                                  icon: _getWeatherUIElements(item['weather'][0]['main'])['icon'],
+                                  temperature: temp,
+                                ),
+                              );
+                            },
                           ),
                         ),
                         const SizedBox(height: 20),
@@ -311,12 +341,24 @@ class _HomeScreenState extends State<HomeScreen> {
                         const SizedBox(height: 10),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                          child: Column(
-                            children: const [
-                              DailyForecastTile(day: 'Çarşamba', icon: Icons.wb_sunny, highTemp: '27', lowTemp: '19'),
-                              DailyForecastTile(day: 'Perşembe', icon: Icons.cloud, highTemp: '26', lowTemp: '18'),
-                              DailyForecastTile(day: 'Cuma', icon: Icons.grain, highTemp: '25', lowTemp: '17'),
-                            ],
+                          child: ListView.builder(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            itemCount: dailyForecastList.length,
+                            itemBuilder: (context, index) {
+                              final item = dailyForecastList[index];
+                              final date = DateTime.fromMillisecondsSinceEpoch(item['dt'] * 1000);
+                              final dayName = DateFormat('EEEE', 'tr_TR').format(date);
+                              final highTemp = item['main']['temp_max'].round().toString();
+                              final lowTemp = item['main']['temp_min'].round().toString();
+
+                              return DailyForecastTile(
+                                day: dayName,
+                                icon: _getWeatherUIElements(item['weather'][0]['main'])['icon'],
+                                highTemp: highTemp,
+                                lowTemp: lowTemp,
+                              );
+                            },
                           ),
                         ),
                       ],
