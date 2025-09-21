@@ -1,8 +1,10 @@
+// home_screen.dart (Saatlik Tahmin Gece/Gündüz Hatası Düzeltilmiş Nihai Hali)
+
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_typeahead/flutter_typeahead.dart';
 import 'package:lottie/lottie.dart';
-import 'package:skyly/api/location_service.dart'; // EKLENDİ: Eksik olan import
+import 'package:skyly/api/location_service.dart';
 import 'package:skyly/core/constants/turkey_cities.dart';
 import 'package:skyly/api/weather_service.dart';
 import 'package:skyly/presentation/widgets/background_effects.dart';
@@ -22,7 +24,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final WeatherService _weatherService = WeatherService();
-  final LocationService _locationService = LocationService(); // EKLENDİ: Eksik olan değişken
+  final LocationService _locationService = LocationService();
   final TextEditingController _searchController = TextEditingController();
   Map<String, dynamic>? _weatherData;
   Map<String, dynamic>? _forecastData;
@@ -59,10 +61,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     if (!_isLoading) {
       setState(() { _isLoading = true; });
     }
-
     _weatherData = null;
     _forecastData = null;
-
     try {
       final results = await Future.wait([
         _weatherService.getWeatherData(cityName),
@@ -91,26 +91,27 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     }
   }
 
-  Map<String, dynamic> _getWeatherUIElements(String? mainCondition) {
+  Map<String, dynamic> _getWeatherUIElements(String? mainCondition, bool isDay) {
     IconData staticIcon;
     List<Color> gradient;
-    String lottieAsset;
+    String? lottieAsset;
 
     switch (mainCondition?.toLowerCase()) {
       case 'clouds':
         staticIcon = Icons.cloud;
-        gradient = [AppColors.cloudySky_1, AppColors.cloudySky_2];
+        // DEĞİŞİKLİK BURADA: Artık gece için ayrı bir dosya aramıyoruz, hep aynısını kullanıyoruz.
         lottieAsset = 'assets/lottie/Clouds.json';
+        gradient = isDay
+            ? [AppColors.cloudySky_1, AppColors.cloudySky_2]
+            : [const Color(0xff141e30), const Color(0xff243b55)];
         break;
-      case 'rain':
-      case 'drizzle':
-      case 'shower rain':
-        staticIcon = Icons.grain;
-        gradient = [const Color(0xff525252), const Color(0xff3d72b4)];
-        lottieAsset = (mainCondition == 'drizzle')
-            ? 'assets/lottie/Weather-partly shower.json'
-            : 'assets/lottie/rainy icon.json';
-        break;
+      case 'rain': case 'drizzle': case 'shower rain':
+      staticIcon = Icons.grain;
+      gradient = [const Color(0xff525252), const Color(0xff3d72b4)];
+      lottieAsset = (mainCondition == 'drizzle')
+          ? 'assets/lottie/Weather-partly shower.json'
+          : 'assets/lottie/rainy icon.json';
+      break;
       case 'thunderstorm':
         staticIcon = Icons.thunderstorm;
         gradient = [const Color(0xff232526), const Color(0xff414345)];
@@ -121,19 +122,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         gradient = [const Color(0xffe6e9f0), const Color(0xffeef1f5)];
         lottieAsset = 'assets/lottie/Weather-snow.json';
         break;
-      case 'mist':
-      case 'fog':
-      case 'haze':
-      case 'smoke':
-        staticIcon = Icons.foggy;
-        gradient = [const Color(0xffbdc3c7), const Color(0xff2c3e50)];
-        lottieAsset = 'assets/lottie/Fog Smoke.json';
-        break;
+      case 'mist': case 'fog': case 'haze': case 'smoke':
+      staticIcon = Icons.foggy;
+      gradient = [const Color(0xffbdc3c7), const Color(0xff2c3e50)];
+      lottieAsset = 'assets/lottie/Fog Smoke.json';
+      break;
       case 'clear':
       default:
-        staticIcon = Icons.wb_sunny_rounded;
-        gradient = [AppColors.clearSky_1, AppColors.clearSky_2];
-        lottieAsset = 'assets/lottie/little sun.json';
+        if (isDay) {
+          staticIcon = Icons.wb_sunny_rounded;
+          gradient = [AppColors.clearSky_1, AppColors.clearSky_2];
+          lottieAsset = 'assets/lottie/little sun.json';
+        } else {
+          staticIcon = Icons.nightlight_round;
+          gradient = [const Color(0xff0f2027), const Color(0xff203a43), const Color(0xff2c5364)];
+          lottieAsset = null;
+        }
         break;
     }
     return {'icon': staticIcon, 'gradient': gradient, 'lottie': lottieAsset};
@@ -146,17 +150,19 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _isLoading
-          ? Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [AppColors.cloudySky_1, AppColors.cloudySky_2],
-            begin: Alignment.topCenter, end: Alignment.bottomCenter,
-          ),
+      body: _isLoading ? _buildLoadingUI() : _buildWeatherUI(),
+    );
+  }
+
+  Widget _buildLoadingUI() {
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.cloudySky_1, AppColors.cloudySky_2],
+          begin: Alignment.topCenter, end: Alignment.bottomCenter,
         ),
-        child: const Center(child: CircularProgressIndicator(color: Colors.white)),
-      )
-          : _buildWeatherUI(),
+      ),
+      child: const Center(child: CircularProgressIndicator(color: Colors.white)),
     );
   }
 
@@ -175,8 +181,14 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ));
     }
 
+    final sunriseTimestamp = _weatherData!['sys']['sunrise'];
+    final sunsetTimestamp = _weatherData!['sys']['sunset'];
+    final currentTimestamp = _weatherData!['dt'];
+    final bool isDay = currentTimestamp > sunriseTimestamp && currentTimestamp < sunsetTimestamp;
+
     final mainCondition = _weatherData!['weather'][0]['main'];
-    final uiElements = _getWeatherUIElements(mainCondition);
+    final uiElements = _getWeatherUIElements(mainCondition, isDay);
+
     final cityName = _weatherData!['name'];
     final temperature = _weatherData!['main']['temp'].round();
     final condition = toBeginningOfSentenceCase(_weatherData!['weather'][0]['description']);
@@ -185,8 +197,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     final windSpeed = (_weatherData!['wind']['speed'] * 3.6).round();
     final humidity = _weatherData!['main']['humidity'];
 
-    final sunriseTimestamp = _weatherData!['sys']['sunrise'];
-    final sunsetTimestamp = _weatherData!['sys']['sunset'];
     final sunriseTime = DateFormat('HH:mm').format(DateTime.fromMillisecondsSinceEpoch(sunriseTimestamp * 1000));
     final sunsetTime = DateFormat('HH:mm').format(DateTime.fromMillisecondsSinceEpoch(sunsetTimestamp * 1000));
 
@@ -220,11 +230,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               children: [
                 Row(
                   children: [
-                    Image.asset(
-                      'assets/images/logo.png',
-                      width: 50,
-                      height: 50,
-                    ),
+                    Image.asset( 'assets/images/logo.png', width: 50, height: 50,),
                     const SizedBox(width: 10),
                     Expanded(
                       child: TypeAheadField<String>(
@@ -297,9 +303,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       return FavoriteCityChip(
                         cityName: city,
                         isSelected: city == cityName,
-                        onTap: () {
-                          _fetchWeather(city);
-                        },
+                        onTap: () { _fetchWeather(city);},
                       );
                     },
                   ),
@@ -309,10 +313,17 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Lottie.asset(
-                          uiElements['lottie'],
-                          width: 150, height: 150,
-                        ),
+                        if (uiElements['lottie'] != null)
+                          Lottie.asset(
+                            uiElements['lottie'],
+                            width: 150, height: 150,
+                          )
+                        else
+                          Icon(
+                            uiElements['icon'],
+                            size: 150,
+                            color: Colors.white,
+                          ),
                         const SizedBox(height: 10),
                         Text(cityName, style: AppTextStyles.cityDisplay),
                         const SizedBox(height: 10),
@@ -387,13 +398,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                               final item = hourlyForecasts[index];
                               final time = DateTime.fromMillisecondsSinceEpoch(item['dt'] * 1000);
                               final temp = item['main']['temp'].round().toString();
-                              final condition = item['weather'][0]['main'];
+                              final itemCondition = item['weather'][0]['main'];
+
+                              // DEĞİŞEN TEK SATIR BURASI
+                              final bool isItemDay = time.hour >= 6 && time.hour < 19;
+                              final itemUiElements = _getWeatherUIElements(itemCondition, isItemDay);
 
                               return Padding(
                                 padding: const EdgeInsets.only(right: 12.0),
                                 child: HourlyForecastCard(
                                   time: DateFormat('HH:mm').format(time),
-                                  lottieAsset: _getWeatherUIElements(condition)['lottie'],
+                                  lottieAsset: itemUiElements['lottie'],
+                                  staticIcon: itemUiElements['icon'],
                                   temperature: temp,
                                 ),
                               );
@@ -411,15 +427,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                             itemCount: dailyForecastList.length,
                             itemBuilder: (context, index) {
                               final item = dailyForecastList[index];
-                              final date = DateTime.fromMillisecondsSinceEpoch(item['dt'] * 1000);
-                              final dayName = DateFormat('EEEE', 'tr_TR').format(date);
+                              final dayName = DateFormat('EEEE', 'tr_TR').format(DateTime.fromMillisecondsSinceEpoch(item['dt'] * 1000));
                               final highTemp = item['main']['temp_max'].round().toString();
                               final lowTemp = item['main']['temp_min'].round().toString();
-                              final condition = item['weather'][0]['main'];
+                              final itemCondition = item['weather'][0]['main'];
+                              final itemUiElements = _getWeatherUIElements(itemCondition, true);
 
                               return DailyForecastTile(
                                 day: dayName,
-                                lottieAsset: _getWeatherUIElements(condition)['lottie'],
+                                lottieAsset: itemUiElements['lottie'],
+                                staticIcon: itemUiElements['icon'],
                                 highTemp: highTemp,
                                 lowTemp: lowTemp,
                               );

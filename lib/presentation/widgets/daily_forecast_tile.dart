@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:lottie/lottie.dart'; // Lottie import'u eklendi
+import 'package:lottie/lottie.dart';
 import '../../core/theme/app_text_styles.dart';
 
 class DailyForecastTile extends StatelessWidget {
   final String day;
-  final String lottieAsset; // IconData yerine lottieAsset
+  final String? lottieAsset;
+  final IconData? staticIcon;
   final String highTemp;
   final String lowTemp;
 
   const DailyForecastTile({
     super.key,
     required this.day,
-    required this.lottieAsset, // Değişti
+    this.lottieAsset,
+    this.staticIcon,
     required this.highTemp,
     required this.lowTemp,
   });
@@ -27,8 +29,10 @@ class DailyForecastTile extends StatelessWidget {
             width: 120,
             child: Text(day, style: AppTextStyles.forecastDay),
           ),
-          // Icon yerine Lottie.asset geldi
-          Lottie.asset(lottieAsset, width: 40, height: 40),
+          if (lottieAsset != null)
+            Lottie.asset(lottieAsset!, width: 40, height: 40)
+          else if (staticIcon != null)
+            Icon(staticIcon, color: Colors.white, size: 28),
           const Spacer(),
           Text('$highTemp°', style: AppTextStyles.forecastTemp),
           const SizedBox(width: 20),
